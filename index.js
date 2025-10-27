@@ -1,65 +1,94 @@
+// Importar Express
 const express = require('express');
 const app = express();
+
+// Middleware para interpretar JSON en el body
 app.use(express.json());
 
-let students = [
-{id: 1, name: "alice"},
-{id: 2, name: "Bob"},
-{id: 3, name: "Charlie"},
-{id: 4, name: "Diana"},
-{id: 5, name: "Ethan"}
-]
-
-
-//Sample endpoint to get all students
-app.get("/students", (req, res) => {
-    res.json(students);
+// Endpoint raíz
+app.get('/', (req, res) => {
+  res.send('Hello World desde Express');
 });
 
-// Sample endpoint to get a student by ID
-app.get("/students/:id", (req, res) => {
-    const student = students.find((s)=> s.id === parseInt(req.params.id));
-    if (!student) return res.status(404).json({message: "Student not found"});
-    res.json(student);
-});
+// Base de datos temporal (en memoria)
+let tasks = [];
+let nextId = 1;
 
-// Sample endpoint to add a new stundet
-app.post ("/students", (req, res)=> {
-    const {name} = req.body; //Desestructuración
-    if (!name) return res.status(400).json ({message: "Name is required"});
-    const newStudent = {
-        id: students.length + 1,
-        name
-    }
-    students.push(newStudent);
-    res.status(201).json (newStudent) // 201 siempre va a ser la respuesta a una creacion de recurso exitosa (POST)
-})
+/**
+ * 📌 POST /tasks - Crear una nueva tarea
+ * Body esperado: { "title": "...", "description": "..." }
+ */
+app.post('/tasks', (req, res) => {
+  const { title, description } = req.body;
 
-
-// Update student by ID
-app.put("/students/:id", (req, res) => {
-  const student = students.find(s => s.id === parseInt(req.params.id));
-  if (!student) return res.status(404).json({ message: 'Student not found' });
-
-  const { name } = req.body;
-  student.name = name || student.name;
-  res.json(student);
-});
-
-
-// Delete student by ID
-app.delete('/students/:id', (req, res) => {
-  const initialLength = students.length;
-  students = students.filter(s => s.id !== parseInt(req.params.id));
-
-  if (students.length === initialLength) {
-    return res.status(404).json({ message: 'Student not found' });
+  if (!title) {
+    return res.status(400).json({ message: 'Title is required' });
   }
 
-  res.json({ message: 'Student deleted successfully' });
+  const newTask = {
+    id: nextId++,
+    title,
+    description: description || '',
+    status: 'PENDING'
+  };
+
+  tasks.push(newTask);
+  res.status(201).json(newTask);
 });
 
-const PORT = 3000;C
+/**
+ * 📌 GET /tasks - Listar todas las tareas
+ */
+app.get('/tasks', (req, res) => {
+  res.json(tasks);
+});
+
+/**
+ * 📌 GET /tasks/:id - Obtener una tarea por su ID
+ */
+app.get('/tasks/:id', (req, res) => {
+  const task = tasks.find(t => t.id == req.params.id);
+  if (!task) {
+    return res.status(404).json({ message: 'Task not found' });
+  }
+  res.json(task);
+});
+
+/**
+ * 📌 PUT /tasks/:id - Actualizar una tarea
+ * Body opcional: { "title": "...", "description": "...", "status": "PENDING|DONE" }
+ */
+app.put('/tasks/:id', (req, res) => {
+  const task = tasks.find(t => t.id == req.params.id);
+  if (!task) {
+    return res.status(404).json({ message: 'Task not found' });
+  }
+
+  const { title, description, status } = req.body;
+  if (title) task.title = title;
+  if (description) task.description = description;
+  if (status) task.status = status.toUpperCase();
+
+  res.json(task);
+});
+
+/**
+ * 📌 DELETE /tasks/:id - Eliminar una tarea
+ */
+app.delete('/tasks/:id', (req, res) => {
+  const id = parseInt(req.params.id);
+  const lengthBefore = tasks.length;
+  tasks = tasks.filter(t => t.id !== id);
+
+  if (tasks.length === lengthBefore) {
+    return res.status(404).json({ message: 'Task not found' });
+  }
+
+  res.json({ message: 'Task deleted successfully' });
+});
+
+// Puerto del servidor
+const PORT = 3000;
 app.listen(PORT, () => {
   console.log(`Servidor activo en http://localhost:${PORT}`);
 });
